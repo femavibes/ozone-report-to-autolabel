@@ -32,25 +32,93 @@ Configure in environment variables - works without needing to write comments.
 
 ## Setup
 
-1. Copy `.env.example` to `.env`
-2. Fill in your labeler credentials and Ozone URL
-3. Add whitelisted moderator DIDs (comma-separated)
-4. Run with `docker compose up`
+### Using Docker (Recommended)
+
+1. Create a `.env` file with your configuration:
+
+```env
+# Bluesky labeler credentials
+BSKY_LABELER_USERNAME="your-labeler-handle"
+BSKY_LABELER_PASSWORD="your-app-password"
+BSKY_LABELER_DID="did:plc:your-labeler-did"
+
+# Bluesky DM credentials (app password with chat scope)
+BSKY_DM_USERNAME="your-labeler-handle"
+BSKY_DM_PASSWORD="your-chat-enabled-app-password"
+
+# Ozone server URL
+OZONE_URL="https://ozone.example.com"
+
+# Polling interval in seconds
+POLLING_SECONDS=30
+
+# Comma-separated list of whitelisted moderator DIDs
+WHITELISTED_MODERATORS="did:plc:moderator1,did:plc:moderator2"
+
+# Auto-labels for report types (comma-separated labels, leave empty to disable)
+REPORT_TYPE_MISLEADING="misleading"
+REPORT_TYPE_SPAM="spam,promotional-content"
+REPORT_TYPE_SEXUAL="sexual-content"
+REPORT_TYPE_RUDE="harassment"
+REPORT_TYPE_VIOLATION="illegal-content"
+REPORT_TYPE_OTHER=""
+
+# Moderator notification preferences (format: did:method, comma-separated)
+# Methods: dm (Bluesky DM)
+MODERATOR_NOTIFICATIONS="did:plc:moderator1:dm,did:plc:moderator2:dm"
+
+# Valid labels that can be applied (comma-separated)
+VALID_LABELS="clutter,garbage,spam,promotional-content,misleading,sexual-content,harassment,illegal-content"
+```
+
+2. Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  ozone-report-to-autolabel:
+    image: ghcr.io/femavibes/ozone-report-to-autolabel:latest
+    env_file:
+      - .env
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data
+```
+
+3. Run the service:
+
+```bash
+docker compose up -d
+```
+
+### Development Setup
+
+1. Clone the repository
+2. Copy `.env.example` to `.env` and configure
+3. Install dependencies: `bun install`
+4. Run: `bun run src/index.ts`
 
 ## Environment Variables
 
-- `BSKY_LABELER_USERNAME` - Your labeler's handle
-- `BSKY_LABELER_PASSWORD` - App password for labeler
-- `BSKY_LABELER_DID` - DID of your labeler
-- `OZONE_URL` - URL to your Ozone server
-- `POLLING_SECONDS` - How often to check for reports (default: 30)
-- `WHITELISTED_MODERATORS` - Comma-separated DIDs of trusted moderators
-- `REPORT_TYPE_MISLEADING` - Labels for misleading content reports
-- `REPORT_TYPE_SPAM` - Labels for spam reports
-- `REPORT_TYPE_SEXUAL` - Labels for sexual content reports
-- `REPORT_TYPE_RUDE` - Labels for rude/harassment reports
-- `REPORT_TYPE_VIOLATION` - Labels for illegal content reports
-- `REPORT_TYPE_OTHER` - Labels for "other" reports
+| Variable | Description | Example |
+|----------|-------------|----------|
+| `BSKY_LABELER_USERNAME` | Your labeler's handle | `labeler.example.com` |
+| `BSKY_LABELER_PASSWORD` | App password for labeler | `abcd-efgh-ijkl-mnop` |
+| `BSKY_LABELER_DID` | DID of your labeler | `did:plc:abc123...` |
+| `BSKY_DM_USERNAME` | Username for DM notifications | `labeler.example.com` |
+| `BSKY_DM_PASSWORD` | App password with chat scope | `abcd-efgh-ijkl-mnop` |
+| `OZONE_URL` | URL to your Ozone server | `https://ozone.example.com` |
+| `POLLING_SECONDS` | How often to check for reports | `30` |
+| `WHITELISTED_MODERATORS` | Comma-separated DIDs of trusted moderators | `did:plc:mod1,did:plc:mod2` |
+| `MODERATOR_NOTIFICATIONS` | DM notification preferences | `did:plc:mod1:dm` |
+| `VALID_LABELS` | Comma-separated list of allowed labels | `spam,harassment,clutter` |
+| `REPORT_TYPE_MISLEADING` | Auto-labels for misleading reports | `misleading,misinformation` |
+| `REPORT_TYPE_SPAM` | Auto-labels for spam reports | `spam,promotional-content` |
+| `REPORT_TYPE_SEXUAL` | Auto-labels for sexual content reports | `sexual-content` |
+| `REPORT_TYPE_RUDE` | Auto-labels for rude/harassment reports | `harassment,abuse` |
+| `REPORT_TYPE_VIOLATION` | Auto-labels for illegal content reports | `illegal-content` |
+| `REPORT_TYPE_OTHER` | Auto-labels for "other" reports | `(leave empty)` |
 
 ## Acknowledgments
 
