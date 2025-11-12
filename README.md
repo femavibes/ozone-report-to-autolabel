@@ -17,7 +17,9 @@ Automatically applies labels to Bluesky posts and accounts based on reports from
 - `add label1,label2` - Apply multiple labels
 - `add-account label1` - Force apply to account (even when reporting post)
 - `add-post label1` - Force apply to post (even when reporting account)
-- `add-a` / `add-p` - Shortcuts for above
+(You can also add a second add command in the same report using these commands above to report both account and post at the same time with different labels for each, for example if reporting a post "add label1,label2 add-account label2,label6" would add label1 and 2 to the post since the report type is a post, and the second command uses the account override)
+
+- `add-a` / `add-p` - Shortcuts for above a=account, p=post
 
 **Remove Labels:**
 - `remove label1` - Remove label1 from reported item
@@ -56,7 +58,8 @@ POLLING_SECONDS=30
 WHITELISTED_MODERATORS="did:plc:moderator1,did:plc:moderator2"
 
 # Auto-labels for report types (comma-separated labels, leave empty to disable)
-REPORT_TYPE_MISLEADING="misleading"
+# Set standard or your custom labels here to quick auto label. I recommend keeping "other" empty and just using that report type for auto labeling with commands in comment box.
+REPORT_TYPE_MISLEADING="yourcustomlabelshere"
 REPORT_TYPE_SPAM="spam,promotional-content"
 REPORT_TYPE_SEXUAL="sexual-content"
 REPORT_TYPE_RUDE="harassment"
@@ -65,6 +68,7 @@ REPORT_TYPE_OTHER=""
 
 # Moderator notification preferences (format: did:method, comma-separated)
 # Methods: dm (Bluesky DM)
+# By default, a bluesky DM is sent, but this option will override the noti method per user when other noti systems are added. For now, just ignore this.
 MODERATOR_NOTIFICATIONS="did:plc:moderator1:dm,did:plc:moderator2:dm"
 
 # Valid labels that can be applied (comma-separated)
