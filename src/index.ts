@@ -2,6 +2,7 @@ import { AtpAgent } from "@atproto/api";
 import { CommandParser } from "./CommandParser";
 import { LabelApplier } from "./LabelApplier";
 import { NotificationService } from "./NotificationService";
+import { AutoBanChecker } from "./AutoBanChecker";
 import type { ModEventView } from "@atproto/api/dist/client/types/tools/ozone/moderation/defs";
 
 function getRequiredEnv(key: string): string {
@@ -24,6 +25,10 @@ async function main() {
   const whitelistedModerators = getRequiredEnv("WHITELISTED_MODERATORS").split(",").map(did => did.trim());
   const moderatorNotifications = process.env.MODERATOR_NOTIFICATIONS || "";
   const validLabels = getRequiredEnv("VALID_LABELS").split(",").map(label => label.trim());
+  
+  // Load auto-ban configuration
+  const modLabels = process.env.MODLABELS?.split(",").map(label => label.trim()) || [];
+  const autoBanConfig = process.env.AUTOBAN || "";
 
   // Load report type auto-labels
   const reportTypeLabels = {
@@ -37,6 +42,8 @@ async function main() {
 
   console.log(`Starting auto-labeler with ${whitelistedModerators.length} whitelisted moderators`);
   console.log(`Valid labels: [${validLabels.join(', ')}]`);
+  console.log(`Mod labels: [${modLabels.join(', ')}]`);
+  console.log(`Auto-ban config: ${autoBanConfig}`);
   console.log(`Report type auto-labels configured:`, reportTypeLabels);
 
   // Initialize AT Protocol agent for Ozone with session persistence
@@ -58,7 +65,11 @@ async function main() {
   // Initialize DM agent
   console.log("Initializing DM agent...");
   await notificationService.initializeDMAgent();
-  const labelApplier = new LabelApplier(agent, labelerDid, notificationService, ozoneUrl, validLabels);
+  
+  // Initialize auto-ban checker
+  const autoBanChecker = new AutoBanChecker(agent, labelerDid, modLabels, autoBanConfig);
+  
+  const labelApplier = new LabelApplier(agent, labelerDid, notificationService, ozoneUrl, validLabels, autoBanChecker);
 
   // Health check server
   Bun.serve({
@@ -139,10 +150,11 @@ async function main() {
       return;
     }
 
-    const comment = event.event.comment;
-    const reportTypeReason = event.event.reportType;
+    const reportEvent = event.event as any;
+    const comment = reportEvent.comment;
+    const reportTypeReason = reportEvent.reportType;
     
-    let commands = [];
+    let commands: any[] = [];
     
     // Parse commands from comment if present
     if (comment) {
@@ -150,7 +162,7 @@ async function main() {
     }
     
     // Check for report type auto-labels
-    const autoLabels = reportTypeLabels[reportTypeReason] || [];
+    const autoLabels = reportTypeLabels[reportTypeReason as keyof typeof reportTypeLabels] || [];
     if (autoLabels.length > 0) {
       commands.push({ action: 'add', target: 'default', labels: autoLabels });
       console.log(`Added auto-labels for report type "${reportTypeReason}": [${autoLabels.join(', ')}]`);
@@ -167,7 +179,7 @@ async function main() {
     const reportType = event.subject.$type === "com.atproto.admin.defs#repoRef" ? "account" : "post";
     
     // Process commands
-    await labelApplier.processCommands(commands, event.subject, reportType, event.creatorHandle, event.createdBy, event.id);
+    await labelApplier.processCommands(commands, event.subject, reportType, event.creatorHandle || 'unknown', event.createdBy, event.id);
   }
 }
 

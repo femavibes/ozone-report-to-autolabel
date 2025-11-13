@@ -32,6 +32,13 @@ Automatically applies labels to Bluesky posts and accounts based on reports from
 Automatically apply labels based on the report type selected (spam, misleading, etc.).
 Configure in environment variables - works without needing to write comments.
 
+### Auto-Ban System
+Automatically applies account labels when users exceed violation thresholds:
+- Tracks moderation labels applied to posts by querying Ozone history
+- Configurable thresholds per label type with caps on cross-contamination
+- Applies account labels that can trigger list membership via other tools
+- Handles label removals by calculating net counts from history
+
 ## Setup
 
 ### Using Docker (Recommended)
@@ -73,6 +80,14 @@ MODERATOR_NOTIFICATIONS="did:plc:moderator1:dm,did:plc:moderator2:dm"
 
 # Valid labels that can be applied (comma-separated)
 VALID_LABELS="clutter,garbage,spam,promotional-content,misleading,sexual-content,harassment,illegal-content"
+
+# Auto-ban system configuration
+# Moderation labels that count toward auto-ban thresholds (comma-separated)
+MODLABELS="clutter,spam,harassment,misleading"
+
+# Auto-ban thresholds (format: label:threshold:otherCap, comma-separated)
+# Example: clutter:5:2 means 5 total points needed, max 2 from other mod labels
+AUTOBAN="clutter:5:2,spam:3:1,harassment:2:0"
 ```
 
 2. Create a `docker-compose.yml` file:
@@ -123,6 +138,8 @@ docker compose up -d
 | `REPORT_TYPE_RUDE` | Auto-labels for rude/harassment reports | `harassment,abuse` |
 | `REPORT_TYPE_VIOLATION` | Auto-labels for illegal content reports | `illegal-content` |
 | `REPORT_TYPE_OTHER` | Auto-labels for "other" reports | `(leave empty)` |
+| `MODLABELS` | Moderation labels that count toward auto-ban | `clutter,spam,harassment` |
+| `AUTOBAN` | Auto-ban thresholds (label:threshold:otherCap) | `clutter:5:2,spam:3:1` |
 
 ## Acknowledgments
 

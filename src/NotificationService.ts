@@ -6,7 +6,7 @@ export interface NotificationPreference {
 }
 
 export class NotificationService {
-  private dmAgent: AtpAgent;
+  private dmAgent: AtpAgent | null = null;
   private preferences: Map<string, NotificationPreference> = new Map();
   private whitelistedModerators: Set<string>;
   private notifiedReports: Set<string> = new Set();
@@ -228,8 +228,12 @@ export class NotificationService {
   }
 
   private async getOrCreateConvo(recipientDid: string): Promise<string> {
+    if (!this.dmAgent || !this.dmAgent.session) {
+      throw new Error('DM agent or session not available');
+    }
+    
     try {
-      const accessJwt = this.dmAgent.session?.accessJwt;
+      const accessJwt = this.dmAgent.session.accessJwt;
       if (!accessJwt) {
         throw new Error('No access token available');
       }
@@ -276,7 +280,7 @@ export class NotificationService {
   }
 
   private async ensureValidSession(): Promise<void> {
-    if (!this.dmAgent?.session) {
+    if (!this.dmAgent || !this.dmAgent.session) {
       throw new Error('No session available');
     }
     
@@ -301,7 +305,7 @@ export class NotificationService {
   }
 
   private async refreshSession(): Promise<void> {
-    if (!this.dmAgent?.session?.refreshJwt) {
+    if (!this.dmAgent || !this.dmAgent.session || !this.dmAgent.session.refreshJwt) {
       console.log('No refresh token available, re-initializing DM agent');
       await this.initializeDMAgent();
       return;
@@ -319,11 +323,10 @@ export class NotificationService {
       
       if (response.ok) {
         const data = await response.json();
-        this.dmAgent.session = {
-          ...this.dmAgent.session,
-          accessJwt: data.accessJwt,
-          refreshJwt: data.refreshJwt
-        };
+        if (this.dmAgent.session) {
+          (this.dmAgent.session as any).accessJwt = data.accessJwt;
+          (this.dmAgent.session as any).refreshJwt = data.refreshJwt;
+        }
         console.log('Session refreshed successfully');
       } else {
         console.log('Session refresh failed, re-initializing DM agent');

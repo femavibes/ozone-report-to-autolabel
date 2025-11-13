@@ -1,6 +1,7 @@
 import { AtpAgent } from "@atproto/api";
 import type { LabelCommand } from "./CommandParser";
 import { NotificationService } from "./NotificationService";
+import { AutoBanChecker } from "./AutoBanChecker";
 
 export class LabelApplier {
   private agent: AtpAgent;
@@ -8,13 +9,15 @@ export class LabelApplier {
   private notificationService: NotificationService;
   private ozoneUrl: string;
   private validLabels: Set<string>;
+  private autoBanChecker?: AutoBanChecker;
 
-  constructor(agent: AtpAgent, labelerDid: string, notificationService: NotificationService, ozoneUrl: string, validLabels: string[]) {
+  constructor(agent: AtpAgent, labelerDid: string, notificationService: NotificationService, ozoneUrl: string, validLabels: string[], autoBanChecker?: AutoBanChecker) {
     this.agent = agent;
     this.labelerDid = labelerDid;
     this.notificationService = notificationService;
     this.ozoneUrl = ozoneUrl;
     this.validLabels = new Set(validLabels);
+    this.autoBanChecker = autoBanChecker;
   }
 
   async processCommands(
@@ -84,6 +87,14 @@ export class LabelApplier {
         if (success) {
           successfulLabels.push(label);
           console.log(`Successfully ${command.action}ed label: ${label}`);
+          
+          // Check auto-ban thresholds after successful label addition to posts
+          if (command.action === 'add' && actualTarget === 'post' && this.autoBanChecker) {
+            const postAuthorDid = this.extractDidFromSubject(subject);
+            if (postAuthorDid) {
+              await this.autoBanChecker.checkThresholds(label, postAuthorDid);
+            }
+          }
         } else {
           failedLabels.push(label);
         }
@@ -186,5 +197,17 @@ export class LabelApplier {
       console.log(`Failed to acknowledge report: ${error}`);
       // Don't send notification for resolve failures - not critical
     }
+  }
+
+  private extractDidFromSubject(subject: any): string | null {
+    if (subject.$type === "com.atproto.repo.strongRef" && subject.uri) {
+      // Extract DID from URI: at://did:plc:xxx/collection/rkey
+      const uriParts = subject.uri.split('/');
+      return uriParts[2] || null;
+    }
+    if (subject.$type === "com.atproto.admin.defs#repoRef" && subject.did) {
+      return subject.did;
+    }
+    return null;
   }
 }
